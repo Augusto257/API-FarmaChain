@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar fármacos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        header {
+            background-color: #3b4dab;
+            color: white;
+            padding: 10px;
+            font-size: 1.5em;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .search-section {
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            gap: 10px;
+        }
+        .search-section input[type="text"] {
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .search-section button {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #3b4dab;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .search-section button:hover {
+            background-color: #2d3d8a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #3b4dab;
+            color: white;
+        }
+        .back-button {
+            background-color: #28a745;
+            margin-top: 20px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: block;
+            width: fit-content;
+            margin: 20px auto;
+        }
+        .back-button:hover {
+            background-color: #218838;
+        }
+        .input-quantity {
+            width: 70px;
+            padding: 5px;
+            margin-right: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 1em;
+            margin-right: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+        .btn-increase {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .btn-decrease {
+            background-color: #F44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Consultar Fármacos</h2>
+        <div class="search-section">
+            <label for="nombreFarmaco">Nombre:</label>
+            <input type="text" id="nombreFarmaco" placeholder="Ingrese nombre">
+            <button onclick="buscarFarmacoPorNombre()">Buscar</button>
+        </div>
+        
+        <h3>Fármaco Buscado</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cantidad</th>
+                    <th>Ubicación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="searchedFarmacoTableBody">
+                <!-- Resultado de búsqueda se insertará aquí -->
+            </tbody>
+        </table>
+
+        <h3>Listado de Todos los Fármacos</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cantidad</th>
+                    <th>Ubicación</th>
+                </tr>
+            </thead>
+            <tbody id="farmacosTableBody">
+                <!-- Lista completa de fármacos se insertará aquí -->
+            </tbody>
+        </table>
+
+        <button class="back-button" onclick="window.location.href='/panel-jefe'">Volver al panel principal</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const searchedFarmacoTableBody = document.getElementById('searchedFarmacoTableBody');
+        const farmacosTableBody = document.getElementById('farmacosTableBody');
+
+        async function buscarFarmacoPorNombre() {
+            const nombre = document.getElementById('nombreFarmaco').value;
+            const token = sessionStorage.getItem('token');
+
+            if (!token) {
+                alert('Usuario no autenticado. Por favor, inicie sesión.');
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await axios.get(`/api/v1/farmacos/${nombre}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                searchedFarmacoTableBody.innerHTML = ""; // Limpiar la tabla de búsqueda
+
+                if (response.data.ok) {
+                    const farmaco = response.data.farmaco;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${farmaco.nombre}</td>
+                        <td>${farmaco.cantidad}</td>
+                        <td>${farmaco.ubicacion}</td>
+                        <td>
+                            <input type="number" class="input-quantity" id="cantidadAumentar" placeholder="Cantidad">
+                            <button class="btn-action btn-increase" onclick="aumentarCantidad(${farmaco.id})">Aumentar</button>
+                            <input type="number" class="input-quantity" id="cantidadDescontar" placeholder="Cantidad">
+                            <button class="btn-action btn-decrease" onclick="descontarCantidad(${farmaco.id}, ${farmaco.cantidad}, '${farmaco.nombre}')">Descontar</button>
+                        </td>
+                    `;
+                    searchedFarmacoTableBody.appendChild(row);
+                } else {
+                    alert('Fármaco no existente');
+                }
+            } catch (error) {
+                console.error('Error al buscar fármaco:', error);
+                alert('Error al buscar el fármaco.');
+            }
+        }
+
+        async function aumentarCantidad(id) {
+            const cantidad = document.getElementById('cantidadAumentar').value;
+            const token = sessionStorage.getItem('token');
+
+            if (!cantidad || cantidad <= 0) {
+                alert('Por favor, ingrese una cantidad válida para aumentar.');
+                return;
+            }
+
+            try {
+                await axios.put(`/api/v1/farmacos/aumentar/${id}`, { cantidad: parseInt(cantidad) }, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                alert('Cantidad aumentada exitosamente');
+                fetchFarmacos();
+                buscarFarmacoPorNombre();
+            } catch (error) {
+                console.error('Error al aumentar cantidad:', error);
+                alert('Error al aumentar la cantidad.');
+            }
+        }
+
+        async function descontarCantidad(id, stockActual, nombreFarmaco) {
+            const cantidad = document.getElementById('cantidadDescontar').value;
+            const token = sessionStorage.getItem('token');
+
+            if (!cantidad || cantidad <= 0) {
+                alert('Por favor, ingrese una cantidad válida para descontar.');
+                return;
+            }
+
+            try {
+                const response = await axios.get(`/api/v1/alertas/farmaco/${id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const alerta = response.data.alerta;
+                const nuevaCantidad = stockActual - parseInt(cantidad);
+
+                if (nuevaCantidad < alerta.stock_minimo) {
+                    alert(`El stock mínimo de ${nombreFarmaco} es de ${alerta.stock_minimo}. No puede disminuir más.`);
+                    return;
+                }
+
+                await axios.put(`/api/v1/farmacos/descontar/${id}`, { cantidad: parseInt(cantidad) }, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                alert('Cantidad descontada exitosamente');
+                fetchFarmacos();
+                buscarFarmacoPorNombre();
+            } catch (error) {
+                console.error('Error al descontar cantidad:', error);
+                alert('Error al descontar la cantidad.');
+            }
+        }
+
+        async function fetchFarmacos() {
+            const token = sessionStorage.getItem('token');
+
+            if (!token) {
+                alert('Usuario no autenticado. Por favor, inicie sesión.');
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await axios.get('/api/v1/farmacos', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                farmacosTableBody.innerHTML = ""; // Limpiar la tabla
+
+                if (response.data.ok) {
+                    const farmacos = response.data.farmacos;
+                    farmacos.forEach(farmaco => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${farmaco.nombre}</td>
+                            <td>${farmaco.cantidad}</td>
+                            <td>${farmaco.ubicacion}</td>
+                        `;
+                        farmacosTableBody.appendChild(row);
+                    });
+                } else {
+                    alert('Error al obtener los fármacos');
+                }
+            } catch (error) {
+                console.error('Error al obtener los fármacos:', error);
+                alert('Error al obtener los fármacos.');
+            }
+        }
+
+        // Cargar la lista de fármacos al cargar la página
+        document.addEventListener('DOMContentLoaded', fetchFarmacos);
+    </script>  
+</body>
+</html>
